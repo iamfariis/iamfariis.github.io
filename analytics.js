@@ -33,7 +33,7 @@
 
   const script = document.createElement('script');
   script.async = true;
-  script.src = apiHost + '/static/1/array.js';
+  script.src = 'https://eu-assets.i.posthog.com/static/array.js';
 
   script.onload = () => {
     if (!window.posthog || typeof window.posthog.init !== 'function') return;

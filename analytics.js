@@ -7,7 +7,7 @@
     try {
       let id = sessionStorage.getItem(sessionKey);
       if (!id) {
-        id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : 'anon-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+        id = (window.crypto && typeof window.crypto.randomUUID === 'function') ? window.crypto.randomUUID() : 'anon-' + Date.now() + '-' + Math.random().toString(36).slice(2);
         sessionStorage.setItem(sessionKey, id);
       }
       return id;
@@ -59,7 +59,8 @@
   }
 
   document.addEventListener('click', (event) => {
-    const el = event.target.closest('[data-analytics-event]');
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const el = target?.closest('[data-analytics-event]');
     if (!el) return;
 
     let destinationHost = '';

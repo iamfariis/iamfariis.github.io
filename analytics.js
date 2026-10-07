@@ -1,62 +1,66 @@
 (() => {
-  const endpoint = 'https://eu.i.posthog.com/i/v0/e/';
+  const apiHost = 'https://eu.i.posthog.com';
+  const uiHost = 'https://eu.posthog.com';
   const apiKey = 'phc_nCvVasGfsjH3wagG6d5ZDSTi9r7gXNZq5h4BDH7nkXGP';
-  const sessionKey = 'opnexta_analytics_session';
+  const pending = [];
 
-  function sessionId() {
-    try {
-      let id = sessionStorage.getItem(sessionKey);
-      if (!id) {
-        id = (window.crypto && typeof window.crypto.randomUUID === 'function') ? window.crypto.randomUUID() : 'anon-' + Date.now() + '-' + Math.random().toString(36).slice(2);
-        sessionStorage.setItem(sessionKey, id);
-      }
-      return id;
-    } catch {
-      return 'anon-' + Date.now() + '-' + Math.random().toString(36).slice(2);
-    }
+  function normalizeProperties(properties = {}) {
+    return {
+      $current_url: location.origin + location.pathname,
+      $host: location.host,
+      $pathname: location.pathname,
+      $referrer: document.referrer ? (() => {
+        try {
+          const u = new URL(document.referrer);
+          return u.origin + u.pathname;
+        } catch {
+          return '';
+        }
+      })() : '',
+      ...properties
+    };
   }
 
   function capture(event, properties = {}) {
-    const payload = {
-      api_key: apiKey,
-      event,
-      distinct_id: sessionId(),
-      timestamp: new Date().toISOString(),
-      properties: {
-        $process_person_profile: false,
-        $current_url: location.origin + location.pathname,
-        $host: location.host,
-        $pathname: location.pathname,
-        $referrer: document.referrer ? (() => {
-          try {
-            const u = new URL(document.referrer);
-            return u.origin + u.pathname;
-          } catch {
-            return '';
-          }
-        })() : '',
-        ...properties
-      }
-    };
-
-    fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      keepalive: true,
-      credentials: 'omit',
-      mode: 'cors'
-    }).catch(() => {});
+    if (window.posthog && typeof window.posthog.capture === 'function') {
+      window.posthog.capture(event, normalizeProperties(properties));
+    } else {
+      pending.push([event, properties]);
+    }
   }
 
   window.OPNEXTAAnalytics = { capture };
 
-  const sendPageview = () => capture('$pageview');
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', sendPageview, { once: true });
-  } else {
-    sendPageview();
-  }
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = apiHost + '/static/1/array.js';
+
+  script.onload = () => {
+    if (!window.posthog || typeof window.posthog.init !== 'function') return;
+
+    window.posthog.init(apiKey, {
+      api_host: apiHost,
+      ui_host: uiHost,
+      persistence: 'sessionStorage',
+      autocapture: false,
+      capture_pageview: false,
+      disable_session_recording: true,
+      advanced_disable_flags: true
+    });
+
+    capture('$pageview');
+
+    while (pending.length) {
+      const [event, properties] = pending.shift();
+      capture(event, properties);
+    }
+  };
+
+  script.onerror = () => {
+    console.warn('OPNEXTA analytics SDK failed to load.');
+  };
+
+  document.head.appendChild(script);
 
   document.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target : event.target?.parentElement;

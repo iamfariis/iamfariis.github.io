@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Free Product JSON-LD Checker | OPNEXTA</title>
+<meta name="description" content="Check Product JSON-LD, Offer price and availability from your own product page HTML. Free, private, browser-only, no sign-up.">
+<link rel="canonical" href="https://opnexta.com/tools/product-jsonld-checker/">
+<meta property="og:title" content="Free Product JSON-LD Checker | OPNEXTA"><meta property="og:description" content="3 free checks for product structured data. Runs locally in your browser.">
+<style>:root{--ink:#0b1730;--teal:#087e9a;--border:#dce8ee;--muted:#5e6b78}*{box-sizing:border-box}body{margin:0;background:#f7fafc;color:var(--ink);font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}main{width:min(820px,calc(100% - 36px));margin:auto;padding:28px 0 80px}header{display:flex;justify-content:space-between;align-items:center;padding:8px 0 42px}a{color:var(--teal)}.brand{font-weight:900;letter-spacing:.12em;text-decoration:none;color:var(--ink)}.tag{font-size:12px;font-weight:800;color:var(--teal);text-transform:uppercase;letter-spacing:.12em}h1{font-size:clamp(32px,6vw,55px);line-height:1.1;letter-spacing:-.04em;margin:12px 0}p{color:var(--muted)}.card{background:white;border:1px solid var(--border);border-radius:18px;padding:26px;box-shadow:0 8px 30px #0b17300a;margin:26px 0}label{font-weight:700;display:block;margin-bottom:8px}textarea{width:100%;min-height:210px;border:1px solid #b8cbd5;border-radius:9px;padding:13px;font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;resize:vertical}button{border:0;border-radius:9px;padding:12px 19px;font-weight:750;cursor:pointer}button.primary{background:var(--teal);color:white}button.secondary{background:#e7f4f7;color:#0b5267}button:focus-visible,a:focus-visible{outline:3px solid #59c8d6;outline-offset:3px}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}.result{padding:12px 14px;border-radius:9px;margin:9px 0;background:#eff7f9}.pass{border-left:4px solid #14805e}.fail{border-left:4px solid #b36524}.note{font-size:13px}.links{padding:20px 24px;background:#eaf5f7;border-radius:14px;margin-top:24px}footer{border-top:1px solid var(--border);padding-top:20px;font-size:13px;margin-top:50px}</style></head>
+<body><main><header><a class="brand" href="/">OPNEXTA</a><a href="/">Home ↗</a></header><div class="tag">Free tools · ecommerce data quality</div>
+<h1>Can your product page communicate its offer clearly?</h1>
+<p>Paste the HTML source of a product page you own or are authorized to audit. Check three Product/Offer fields locally. No upload, account, or subscription.</p>
+<div class="card"><label for="source">Product page HTML source</label><textarea id="source" placeholder="Paste HTML containing a script type='application/ld+json'…"></textarea><div class="actions"><button class="primary" id="run" type="button">Check 3 fields</button><button class="secondary" id="demo" type="button">Load fictional demo</button></div><div id="results" role="status" aria-live="polite"></div></div>
+<div class="links"><strong>What should you check next?</strong><p>Review our <a href="/resources/product-jsonld-checklist/">practical Product JSON-LD checklist</a> and confirm fixes with Google's official testing tools. This checker does not certify merchant listing eligibility or predict AI shopping rankings.</p></div>
+<p class="note">The tool only inspects pasted HTML and looks for embedded JSON-LD. It does not fetch a URL, validate live product feeds, execute pasted scripts, or guarantee search appearance. Your pasted HTML stays in this browser tab.</p>
+<footer>© 2026 OPNEXTA · <a href="mailto:team@opnexta.com">Support</a> · <a href="/">opnexta.com</a></footer>
+</main><script>
+(()=>{'use strict';
+const source=document.getElementById('source'),results=document.getElementById('results');
+function kind(obj,name){const v=obj&&obj['@type'];return (Array.isArray(v)?v:[v]).some(x=>typeof x==='string'&&x.split('/').pop().toLowerCase()===name.toLowerCase())}
+function objects(x){if(!x||typeof x!=='object')return[];if(Array.isArray(x))return x.flatMap(objects);return [x,...(x['@graph']?objects(x['@graph']):[])]}
+function offersFor(p){const o=p.offers;return (Array.isArray(o)?o:[o]).filter(x=>x&&typeof x==='object')}
+function row(label,pass){const d=document.createElement('div');d.className='result '+(pass?'pass':'fail');d.textContent=(pass?'✓ ':'Needs review: ')+label;results.appendChild(d)}
+document.getElementById('demo').addEventListener('click',()=>{source.value='<script type="application/ld+json">{"@context":"https://schema.org","@type":"Product","name":"Demo Notebook","offers":{"@type":"Offer","price":19,"priceCurrency":"USD"}}<\/script>';results.replaceChildren()});
+document.getElementById('run').addEventListener('click',()=>{results.replaceChildren();if(!source.value.trim()){row('Paste your product page HTML first',false);return}
+const doc=new DOMParser().parseFromString(source.value,'text/html');let parsed=[];let errors=0;
+for(const el of doc.querySelectorAll('script[type="application/ld+json"]')){try{parsed.push(JSON.parse(el.textContent))}catch(e){errors++}}
+const products=parsed.flatMap(objects).filter(x=>kind(x,'Product'));
+const offers=products.flatMap(offersFor);
+row('Product JSON-LD found',products.length>0);
+row('Product Offer price present',offers.some(x=>x.price!==undefined||x.priceSpecification?.price!==undefined));
+row('Product Offer availability present',offers.some(x=>!!x.availability));
+if(errors){const p=document.createElement('p');p.textContent=errors+' JSON-LD block(s) could not be parsed.';results.appendChild(p)}
+const p=document.createElement('p');p.className='note';p.textContent='Heuristic checks only. Confirm with official validators.';results.appendChild(p)
+});
+})();
+</script></body></html>
